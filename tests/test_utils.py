@@ -1,7 +1,7 @@
 from enchant.utils import trim_suggestions
 
 
-def test_trim_suggestions():
+def test_trim_suggestions() -> None:
     word = "gud"
     suggs = ["good", "god", "bad+"]
     assert trim_suggestions(word, suggs, 40) == ["god", "good", "bad+"]

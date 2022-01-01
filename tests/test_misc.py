@@ -1,7 +1,7 @@
 import enchant
 
 
-def test_get_user_config_dir():
+def test_get_user_config_dir() -> None:
     """
     Scenario:
       Either broker.get_user_config_dir() works

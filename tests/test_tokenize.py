@@ -28,6 +28,7 @@
 # do so, delete this exception statement from your version.
 #
 import textwrap
+from typing import List, Tuple
 
 import pytest
 
@@ -44,7 +45,7 @@ from enchant.tokenize import (
 from enchant.tokenize.en import tokenize as tokenize_en
 
 
-def test_basic_tokenize():
+def test_basic_tokenize() -> None:
     """Simple regression test for basic white-space tokenization."""
     input = """This is a paragraph.  It's not very special, but it's designed
 2 show how the splitter works with many-different combos
@@ -87,7 +88,7 @@ of words. Also need to "test" the (handling) of 'quoted' words."""
         assert itm_o == itm_v
 
 
-def test_tokenize_strip():
+def test_tokenize_strip() -> None:
     """Test special-char-stripping edge-cases in basic_tokenize."""
     input = "((' <this> \"\" 'text' has (lots) of (special chars} >>]"
     output = [
@@ -105,14 +106,14 @@ def test_tokenize_strip():
         assert itm_o, itm_v
 
 
-def test_wrap_tokenizer():
+def test_wrap_tokenizer() -> None:
     """Test wrapping of one tokenizer with another."""
     input = "this-string will be split@according to diff'rnt rules"
     from enchant.tokenize import en
 
     tknzr = wrap_tokenizer(basic_tokenize, en.tokenize)
     tknzr = tknzr(input)
-    assert tknzr._tokenizer.__class__ == basic_tokenize
+    assert isinstance(tknzr._tokenizer, basic_tokenize)
     assert tknzr._tokenizer.offset == 0
     for (n, (word, pos)) in enumerate(tknzr):
         if n == 0:
@@ -161,16 +162,17 @@ def test_wrap_tokenizer():
 
 
 @pytest.fixture
-def test_text():
+def test_text() -> str:
     text = """this text with http://url.com and SomeLinksLike
               ftp://my.site.com.au/some/file AndOthers not:/quite.a.url
               with-an@aemail.address as well"""
     return text
 
 
-def test_url_filter(test_text):
+def test_url_filter(test_text: str) -> None:
     """Test filtering of URLs"""
-    tkns = get_tokenizer("en_US", filters=(URLFilter,))(test_text)
+    tokenizer = get_tokenizer("en_US", filters=(URLFilter,))
+    tkns = tokenizer(test_text)
     out = [t for t in tkns]
     exp = [
         ("this", 0),
@@ -193,7 +195,7 @@ def test_url_filter(test_text):
     assert out == exp
 
 
-def test_wiki_word_filter(test_text):
+def test_wiki_word_filter(test_text: str) -> None:
     """Test filtering of WikiWords"""
     tkns = get_tokenizer("en_US", filters=(WikiWordFilter,))(test_text)
     out = [t for t in tkns]
@@ -226,7 +228,7 @@ def test_wiki_word_filter(test_text):
     assert out == exp
 
 
-def test_email_filter(test_text):
+def test_email_filter(test_text: str) -> None:
     """Test filtering of email addresses"""
     tkns = get_tokenizer("en_US", filters=(EmailFilter,))(test_text)
     out = [t for t in tkns]
@@ -257,7 +259,7 @@ def test_email_filter(test_text):
     assert out == exp
 
 
-def test_combined_filter(test_text):
+def test_combined_filter(test_text: str) -> None:
     """Test several filters combined"""
     tkns = get_tokenizer("en_US", filters=(URLFilter, WikiWordFilter, EmailFilter))(
         test_text
@@ -278,7 +280,7 @@ def test_combined_filter(test_text):
     assert out == exp
 
 
-def test_html_chunker():
+def test_html_chunker() -> None:
     """Test filtering of URLs"""
     text = """hello<html><head><title>my title</title></head><body>this is a
               <b>simple</b> HTML document for <p> test<i>ing</i> purposes</p>.
@@ -311,7 +313,7 @@ def test_html_chunker():
         assert text[pos : pos + len(word)] == word
 
 
-def test_tokenize_en():
+def test_tokenize_en() -> None:
     """Simple regression test for English tokenization."""
     input = """This is a paragraph.  It's not very special, but it's designed
 2 show how the splitter works with many-different combos
@@ -353,7 +355,7 @@ of words. Also need to "test" the handling of 'quoted' words."""
         assert itm_o == itm_v
 
 
-def test_unicode_basic():
+def test_unicode_basic() -> None:
     """Test tokenization of a basic unicode string."""
     input = "Ik ben geïnteresseerd in de coördinatie van mijn knieën, maar kan niet één à twee enquêtes vinden die recht doet aan mijn carrière op Curaçao"
     output = input.split(" ")
@@ -363,7 +365,7 @@ def test_unicode_basic():
         assert input[itm_v[1] :].startswith(itm_o)
 
 
-def test_bug1591450():
+def test_bug1591450() -> None:
     """Check for tokenization regressions identified in bug #1591450."""
     input = """Testing <i>markup</i> and {y:i}so-forth...leading dots and trail--- well, you get-the-point. Also check numbers: 999 1,000 12:00 .45. Done?"""
     output = [
@@ -394,7 +396,7 @@ def test_bug1591450():
         assert itm_o == itm_v
 
 
-def test_bug2785373():
+def test_bug2785373() -> None:
     """Testcases for bug #2785373"""
     input = "So, one dey when I wes 17, I left."
     for _ in tokenize_en(input):
@@ -404,7 +406,7 @@ def test_bug2785373():
         pass
 
 
-def test_finnish_text():
+def test_finnish_text() -> None:
     """Test tokenizing some Finnish text.
 
     This really should work since there are no special rules to apply,
@@ -454,7 +456,7 @@ def test_finnish_text():
     assert list(tokenize_en(text)) == expected_tokens
 
 
-def test_typographic_apostrophe():
+def test_typographic_apostrophe() -> None:
     """ "Typographic apostrophes should be word separators in English."""
     text = "They\u2019re here"
     expected_tokens = [("They", 0), ("re", 5), ("here", 8)]
@@ -477,6 +479,6 @@ def test_typographic_apostrophe():
         (bytearray((0xC3, 0xA4)), [(bytearray((0xC3, 0xA4)), 0)]),
     ],
 )
-def test_tokenize_en_byte(text, expected):
+def test_tokenize_en_byte(text: bytes, expected: List[Tuple[bytes, int]]) -> None:
     """Test tokenizing bytes."""
     assert list(tokenize_en(text)) == expected

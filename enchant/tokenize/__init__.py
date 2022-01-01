@@ -170,7 +170,7 @@ def get_tokenizer(
     tag: str = None,
     chunkers: Iterable[Union[Type["Chunker"], Type["Filter"]]] = None,
     filters: Iterable[Type["Filter"]] = None,
-) -> tokenize:
+) -> Type[tokenize]:
     """Locate an appropriate tokenizer by language tag.
 
     This requires importing the function 'tokenize' from an appropriate

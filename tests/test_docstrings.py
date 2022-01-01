@@ -73,7 +73,7 @@ WORDS = [
 ]
 
 
-def test_docstrings():
+def test_docstrings():  # type: ignore
     """Test that all our docstrings are error-free."""
     import enchant
     import enchant.checker
@@ -91,7 +91,7 @@ def test_docstrings():
         import enchant.checker.WxSpellCheckerDialog
     except ImportError:
         pass
-    errors = []
+    errors = []  # type: ignore[var-annotated]
     #  Naive recursion here would blow the stack, instead we
     #  simulate it with our own stack
     tocheck = [enchant]
@@ -99,12 +99,12 @@ def test_docstrings():
     while tocheck:
         obj = tocheck.pop()
         checked.append(obj)
-        newobjs = list(_check_docstrings(obj, errors))
+        newobjs = list(_check_docstrings(obj, errors))  # type: ignore
         tocheck.extend([obj for obj in newobjs if obj not in checked])
     assert not errors
 
 
-def _check_docstrings(obj, errors):
+def _check_docstrings(obj, errors):  # type: ignore
     import enchant
 
     if hasattr(obj, "__doc__"):

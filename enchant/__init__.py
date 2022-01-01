@@ -84,7 +84,10 @@ except ImportError:
         raise
     _e = None  # type: ignore
 
-from typing import Any, List, NoReturn, Optional, Tuple, Type, Union  # noqa F401
+from ctypes import c_void_p
+from typing import Any  # noqa F401
+from typing import Dict as PythonDict  # Prevent collision with enchant.Dict
+from typing import List, NoReturn, Optional, Tuple, Type, Union  # noqa F401
 
 from enchant.errors import *  # noqa F401,F403
 from enchant.errors import DictNotFoundError, Error
@@ -116,13 +119,13 @@ class ProviderDesc:
     def __repr__(self) -> str:
         return str(self)
 
-    def __eq__(self, pd):
+    def __eq__(self, pd: Any) -> bool:
         """Equality operator on ProviderDesc objects."""
         if not isinstance(pd, ProviderDesc):
             return False
         return self.name == pd.name and self.desc == pd.desc and self.file == pd.file
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Hash operator on ProviderDesc objects."""
         return hash(self.name + self.desc + self.file)
 
@@ -142,13 +145,13 @@ class _EnchantObject:
 
     def __init__(self) -> None:
         """_EnchantObject constructor."""
-        self._this = None
+        self._this: Optional[c_void_p] = None
         #  To be importable when enchant C lib is missing, we need
         #  to create a dummy default broker.
         if _e is not None:
             self._init_this()
 
-    def _check_this(self, msg: str = None) -> None:
+    def _check_this(self, msg: Optional[str] = None) -> None:
         """Check that self._this is set to a pointer, rather than None."""
         if self._this is None:
             if msg is None:
@@ -175,7 +178,7 @@ class _EnchantObject:
 
     _raise_error._DOC_ERRORS = ["eclass"]  # type: ignore
 
-    def __getstate__(self):
+    def __getstate__(self) -> PythonDict[Any, Any]:
         """Customize pickling of PyEnchant objects.
 
         Since it's not safe for multiple objects to share the same C-library
@@ -185,7 +188,7 @@ class _EnchantObject:
         state["_this"] = None
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: PythonDict[Any, Any]) -> None:
         self.__dict__.update(state)
         self._init_this()
 
@@ -218,7 +221,7 @@ class Broker(_EnchantObject):
         self._this = _e.broker_init()
         if not self._this:
             raise Error("Could not initialise an enchant broker.")
-        self._live_dicts = {}
+        self._live_dicts: PythonDict[c_void_p, int] = {}
 
     def __del__(self) -> None:
         """Broker object destructor."""
@@ -228,7 +231,7 @@ class Broker(_EnchantObject):
         except (AttributeError, TypeError):
             pass
 
-    def __getstate__(self):
+    def __getstate__(self) -> PythonDict[Any, Any]:
         state = super().__getstate__()
         state.pop("_live_dicts")
         return state
@@ -260,7 +263,7 @@ class Broker(_EnchantObject):
             _e.broker_free(self._this)
             self._this = None
 
-    def request_dict(self, tag: str = None) -> "Dict":
+    def request_dict(self, tag: Optional[str] = None) -> "Dict":
         """Request a Dict object for the language specified by <tag>.
 
         This method constructs and returns a Dict object for the
@@ -298,7 +301,7 @@ class Broker(_EnchantObject):
             self._live_dicts[new_dict] = 1
         else:
             self._live_dicts[new_dict] += 1
-        return new_dict
+        return new_dict  # type: ignore[no-any-return]
 
     def request_pwl_dict(self, pwl: str) -> "Dict":
         """Request a Dict object for a personal word list.
@@ -317,7 +320,10 @@ class Broker(_EnchantObject):
             self._live_dicts[new_dict] = 1
         else:
             self._live_dicts[new_dict] += 1
-        d = Dict(False)
+        # Note: using tag=False is not supposed to be done by users of the Enchant library.
+        # Keep this # type:ignore here, we don't want to annotate the tag parameter of
+        # enchant.Dict to be Optional[str|bool] ...
+        d = Dict(False)  # type: ignore[arg-type]
         d._switch_this(new_dict, self)
         return d
 
@@ -328,9 +334,10 @@ class Broker(_EnchantObject):
         It is equivalent to calling the object's 'free' method.  Once this
         method has been called on a dictionary, it must not be used again.
         """
+        assert dict._this  # prevent double-free
         self._free_dict_data(dict._this)
         dict._this = None
-        dict._broker = None
+        dict._broker = None  # type: ignore
 
     def _free_dict_data(self, dict: _e.t_dict) -> None:
         """Free the underlying pointer for a dict."""
@@ -374,20 +381,21 @@ class Broker(_EnchantObject):
         ProviderDesc object.
         """
         self._check_this()
-        self.__describe_result = []
+        self.__describe_result: List[Tuple[str, str, str]] = []
+        assert self._this
         _e.broker_describe(self._this, self.__describe_callback)
         return [ProviderDesc(*r) for r in self.__describe_result]
 
-    def __describe_callback(self, name: bytes, desc: bytes, file: bytes) -> None:
+    def __describe_callback(self, c_name: bytes, c_desc: bytes, c_file: bytes) -> None:
         """Collector callback for dictionary description.
 
         This method is used as a callback into the _enchant function
         'enchant_broker_describe'.  It collects the given arguments in
         a tuple and appends them to the list '__describe_result'.
         """
-        name = name.decode()
-        desc = desc.decode()
-        file = file.decode()
+        name = c_name.decode()
+        desc = c_desc.decode()
+        file = c_file.decode()
         self.__describe_result.append((name, desc, file))
 
     def list_dicts(self) -> List[Tuple[str, ProviderDesc]]:
@@ -403,21 +411,24 @@ class Broker(_EnchantObject):
         through which that dictionary can be obtained.
         """
         self._check_this()
-        self.__list_dicts_result = []
+        self.__list_dicts_result: List[Tuple[str, Tuple[str, str, str]]] = []
+        assert self._this
         _e.broker_list_dicts(self._this, self.__list_dicts_callback)
         return [(r[0], ProviderDesc(*r[1])) for r in self.__list_dicts_result]
 
-    def __list_dicts_callback(self, tag, name, desc, file):
+    def __list_dicts_callback(
+        self, c_tag: bytes, c_name: bytes, c_desc: bytes, c_file: bytes
+    ) -> None:
         """Collector callback for listing dictionaries.
 
         This method is used as a callback into the _enchant function
         'enchant_broker_list_dicts'.  It collects the given arguments into
         an appropriate tuple and appends them to '__list_dicts_result'.
         """
-        tag = tag.decode()
-        name = name.decode()
-        desc = desc.decode()
-        file = file.decode()
+        tag = c_tag.decode()
+        name = c_name.decode()
+        desc = c_desc.decode()
+        file = c_file.decode()
         self.__list_dicts_result.append((tag, (name, desc, file)))
 
     def list_languages(self) -> List[str]:
@@ -432,20 +443,20 @@ class Broker(_EnchantObject):
                 langs.append(tag)
         return langs
 
-    def __describe_dict(self, dict_data):
+    def __describe_dict(self, dict_data: c_void_p) -> Tuple[str, str, str, str]:
         """Get the description tuple for a dict data object.
         <dict_data> must be a C-library pointer to an enchant dictionary.
         The return value is a tuple of the form:
                 (<tag>,<name>,<desc>,<file>)
         """
         # Define local callback function
-        cb_result = []
+        cb_result: List[Tuple[str, str, str, str]] = []
 
-        def cb_func(tag, name, desc, file):
-            tag = tag.decode()
-            name = name.decode()
-            desc = desc.decode()
-            file = file.decode()
+        def cb_func(c_tag: bytes, c_name: bytes, c_desc: bytes, c_file: bytes) -> None:
+            tag = c_tag.decode()
+            name = c_name.decode()
+            desc = c_desc.decode()
+            file = c_file.decode()
             cb_result.append((tag, name, desc, file))
 
         # Actually call the describer function
@@ -483,10 +494,10 @@ class Broker(_EnchantObject):
             This method does **not** work when using the Enchant C
             library version 2.0 and above
         """
-        name = name.encode()
+        c_name = name.encode()
         if value is not None:
-            value = value.encode()
-        _e.broker_set_param(self._this, name, value)
+            c_value = value.encode()
+        _e.broker_set_param(self._this, c_name, c_value)
 
 
 class Dict(_EnchantObject):
@@ -536,7 +547,7 @@ class Dict(_EnchantObject):
         is used.
         """
         # Initialise misc object attributes to None
-        self.provider = None
+        self.provider: Optional[ProviderDesc] = None
         # If no tag was given, use the default language
         if tag is None:
             tag = get_default_language()
@@ -568,7 +579,7 @@ class Dict(_EnchantObject):
         except (AttributeError, TypeError):
             pass
 
-    def _switch_this(self, this, broker: Broker) -> None:
+    def _switch_this(self, this: c_void_p, broker: Broker) -> None:
         """Switch the underlying C-library pointer for this object.
 
         As all useful state for a Dict is stored by the underlying C-library
@@ -632,7 +643,9 @@ class Dict(_EnchantObject):
         This method takes a word in the dictionary language and returns
         True if it is correctly spelled, and false otherwise.
         """
+        assert self._this
         self._check_this()
+        assert self._this
         # Enchant asserts that the word is non-empty.
         # Check it up-front to avoid nasty warnings on stderr.
         if len(word) == 0:
@@ -651,6 +664,7 @@ class Dict(_EnchantObject):
         word, returning the possibilities in a list.
         """
         self._check_this()
+        assert self._this
         # Enchant asserts that the word is non-empty.
         # Check it up-front to avoid nasty warnings on stderr.
         if len(word) == 0:
@@ -661,11 +675,13 @@ class Dict(_EnchantObject):
     def add(self, word: str) -> None:
         """Add a word to the user's personal word list."""
         self._check_this()
+        assert self._this
         _e.dict_add(self._this, word.encode())
 
     def remove(self, word: str) -> None:
         """Add a word to the user's personal exclude list."""
         self._check_this()
+        assert self._this
         _e.dict_remove(self._this, word.encode())
 
     def add_to_pwl(self, word: str) -> None:
@@ -676,27 +692,32 @@ class Dict(_EnchantObject):
             stacklevel=2,
         )
         self._check_this()
+        assert self._this
         _e.dict_add_to_pwl(self._this, word.encode())
 
     def add_to_session(self, word: str) -> None:
         """Add a word to the session personal list."""
         self._check_this()
+        assert self._this
         _e.dict_add_to_session(self._this, word.encode())
 
     def remove_from_session(self, word: str) -> None:
         """Add a word to the session exclude list."""
         self._check_this()
+        assert self._this
         _e.dict_remove_from_session(self._this, word.encode())
 
     def is_added(self, word: str) -> bool:
         """Check whether a word is in the personal word list."""
         self._check_this()
-        return _e.dict_is_added(self._this, word.encode())
+        assert self._this
+        return _e.dict_is_added(self._this, word.encode()) == 1
 
     def is_removed(self, word: str) -> bool:
         """Check whether a word is in the personal exclude list."""
         self._check_this()
-        return _e.dict_is_removed(self._this, word.encode())
+        assert self._this
+        return _e.dict_is_removed(self._this, word.encode()) == 1
 
     def store_replacement(self, mis: str, cor: str) -> None:
         """Store a replacement spelling for a miss-spelled word.
@@ -711,6 +732,7 @@ class Dict(_EnchantObject):
         if not cor:
             raise ValueError("can't store empty string as a replacement")
         self._check_this()
+        assert self._this
         _e.dict_store_replacement(self._this, mis.encode(), cor.encode())
 
     store_replacement._DOC_ERRORS = ["mis", "mis"]  # type: ignore
@@ -732,20 +754,23 @@ class Dict(_EnchantObject):
         """
         if check_this:
             self._check_this()
+        assert self._this
         _e.dict_describe(self._this, self.__describe_callback)
         return self.__describe_result
 
-    def __describe_callback(self, tag, name, desc, file):
+    def __describe_callback(
+        self, c_tag: bytes, c_name: bytes, c_desc: bytes, c_file: bytes
+    ) -> None:
         """Collector callback for dictionary description.
 
         This method is used as a callback into the _enchant function
         'enchant_dict_describe'.  It collects the given arguments in
         a tuple and stores them in the attribute '__describe_result'.
         """
-        tag = tag.decode()
-        name = name.decode()
-        desc = desc.decode()
-        file = file.decode()
+        tag = c_tag.decode()
+        name = c_name.decode()
+        desc = c_desc.decode()
+        file = c_file.decode()
         self.__describe_result = (tag, name, desc, file)
 
 
@@ -781,7 +806,11 @@ class DictWithPWL(Dict):
     _DOC_ERRORS = ["pel", "pel", "PEL", "pel"]
 
     def __init__(
-        self, tag: str, pwl: str = None, pel: str = None, broker: Broker = None
+        self,
+        tag: str,
+        pwl: Optional[str] = None,
+        pel: Optional[str] = None,
+        broker: Optional[Broker] = None,
     ) -> None:
         """DictWithPWL constructor.
 
@@ -799,7 +828,7 @@ class DictWithPWL(Dict):
                 f = open(pwl, "wt")
                 f.close()
                 del f
-            self.pwl = self._broker.request_pwl_dict(pwl)
+            self.pwl: Optional[Union[PyPWL, Dict]] = self._broker.request_pwl_dict(pwl)
         else:
             self.pwl = PyPWL()
         if pel is not None:
@@ -807,9 +836,7 @@ class DictWithPWL(Dict):
                 f = open(pel, "wt")
                 f.close()
                 del f
-            self.pel = self._broker.request_pwl_dict(
-                pel
-            )  # type: Union[None, _e.t_dict, PyPWL]
+            self.pel: Optional[Union[PyPWL, Dict]] = self._broker.request_pwl_dict(pel)
         else:
             self.pel = PyPWL()
 
@@ -820,6 +847,8 @@ class DictWithPWL(Dict):
         if self.pel is None:
             self._free()
         super()._check_this(msg)
+        assert self.pwl
+        assert self.pel
         self.pwl._check_this(msg)
         self.pel._check_this(msg)
 
@@ -840,6 +869,8 @@ class DictWithPWL(Dict):
         True if it is correctly spelled, and false otherwise.  It checks
         both the dictionary and the personal word list.
         """
+        assert self.pel
+        assert self.pwl
         if self.pel.check(word):
             return False
         if self.pwl.check(word):
@@ -854,6 +885,8 @@ class DictWithPWL(Dict):
         This method tries to guess the correct spelling for a given
         word, returning the possibilities in a list.
         """
+        assert self.pwl
+        assert self.pel
         suggs = super().suggest(word)
         suggs.extend([w for w in self.pwl.suggest(word) if w not in suggs])
         for i in range(len(suggs) - 1, -1, -1):
@@ -868,12 +901,16 @@ class DictWithPWL(Dict):
         automatically saves the list to disk.
         """
         self._check_this()
+        assert self.pwl
+        assert self.pel
         self.pwl.add(word)
         self.pel.remove(word)
 
     def remove(self, word: str) -> None:
         """Add a word to the associated exclude list."""
         self._check_this()
+        assert self.pwl
+        assert self.pel
         self.pwl.remove(word)
         self.pel.add(word)
 
@@ -884,17 +921,23 @@ class DictWithPWL(Dict):
         automatically saves the list to disk.
         """
         self._check_this()
+        assert self.pwl
+        assert self.pel
         self.pwl.add_to_pwl(word)
         self.pel.remove(word)
 
     def is_added(self, word: str) -> bool:
         """Check whether a word is in the personal word list."""
         self._check_this()
+        assert self.pwl
+        assert self.pel
         return self.pwl.is_added(word)
 
     def is_removed(self, word: str) -> bool:
         """Check whether a word is in the personal exclude list."""
         self._check_this()
+        assert self.pwl
+        assert self.pel
         return self.pel.is_added(word)
 
 
@@ -912,7 +955,8 @@ set_param = _broker.set_param
 #  Expose the "get_version" function.
 def get_enchant_version() -> str:
     """Get the version string for the underlying enchant library."""
-    return _e.get_version().decode()
+    c_version: bytes = _e.get_version()
+    return c_version.decode()
 
 
 #  Expose the "set_prefix_dir" function.
@@ -922,13 +966,12 @@ def set_prefix_dir(path: str) -> None:
     Called automatically when the Python library is imported when
     required.
     """
-    return _e.set_prefix_dir(path)
-
-    set_prefix_dir._DOC_ERRORS = ["plugins"]
+    _e.set_prefix_dir(path)
 
 
 def get_user_config_dir() -> str:
     """Return the path that will be used by some
     Enchant providers to look for custom dictionaries.
     """
-    return _e.get_user_config_dir().decode()
+    c_dir: bytes = _e.get_user_config_dir()
+    return c_dir.decode()

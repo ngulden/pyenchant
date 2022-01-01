@@ -1,4 +1,6 @@
 import sys
+from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -6,24 +8,24 @@ from enchant import DictWithPWL, PyPWL, request_pwl_dict
 
 
 @pytest.fixture
-def pwl_path(tmp_path):
+def pwl_path(tmp_path: Path) -> Path:
     res = tmp_path / ("pwl.txt")
     res.write_text("")
     return res
 
 
-def set_pwl_contents(path, contents):
+def set_pwl_contents(path: Path, contents: List[str]) -> None:
     """Set the contents of the PWL file."""
     path.write_text("\n".join(contents))
 
 
-def get_pwl_contents(path):
+def get_pwl_contents(path: Path) -> List[str]:
     """Retrieve the contents of the PWL file."""
     contents = path.read_text()
     return [c.strip() for c in contents.splitlines()]
 
 
-def test_check(pwl_path):
+def test_check(pwl_path: Path) -> None:
     """Test that basic checking works for PWLs."""
     set_pwl_contents(pwl_path, ["Sazz", "Lozz"])
     d = request_pwl_dict(str(pwl_path))
@@ -38,7 +40,7 @@ def test_check(pwl_path):
 )
 # This test only fails on mypy3 and Windows. Not sure if it's
 # a bug in PyEnchant, Enchant or pypy3
-def test_unicodefn(tmp_path):
+def test_unicodefn(tmp_path: Path) -> None:
     """Test that unicode PWL filenames are accepted."""
     unicode_path = tmp_path / "테스트"
     set_pwl_contents(unicode_path, ["Lozz"])
@@ -47,7 +49,7 @@ def test_unicodefn(tmp_path):
     assert d
 
 
-def test_add(pwl_path):
+def test_add(pwl_path: Path) -> None:
     """Test that adding words to a PWL works correctly."""
     d = request_pwl_dict(str(pwl_path))
     assert not d.check("Flagen")
@@ -58,7 +60,7 @@ def test_add(pwl_path):
     assert d.is_added("Esquilax")
 
 
-def test_suggestions(pwl_path):
+def test_suggestions(pwl_path: Path) -> None:
     """Test getting suggestions from a PWL."""
     set_pwl_contents(pwl_path, ["Sazz", "Lozz"])
     d = request_pwl_dict(str(pwl_path))
@@ -70,7 +72,7 @@ def test_suggestions(pwl_path):
     assert "sazz" not in d.suggest("Flags")
 
 
-def test_dwpwl(tmp_path, pwl_path):
+def test_dwpwl(tmp_path: Path, pwl_path: Path) -> None:
     """Test functionality of DictWithPWL."""
     set_pwl_contents(pwl_path, ["Sazz", "Lozz"])
     other_path = tmp_path / "pel.txt"
@@ -92,7 +94,7 @@ def test_dwpwl(tmp_path, pwl_path):
     assert not d.check("Lozz")
 
 
-def test_dwpwl_empty(tmp_path):
+def test_dwpwl_empty(tmp_path: Path) -> None:
     """Test functionality of DictWithPWL using transient dicts."""
     d = DictWithPWL("en_US", None, None)
     assert d.check("hello")
@@ -106,7 +108,7 @@ def test_dwpwl_empty(tmp_path):
     assert d.check("hello")
 
 
-def test_pypwl(tmp_path):
+def test_pypwl(tmp_path: Path) -> None:
     """Test our pure-python PWL implementation."""
     d = PyPWL()
     assert list(d._words) == []

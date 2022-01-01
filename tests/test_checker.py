@@ -38,7 +38,7 @@ from enchant.errors import DefaultLanguageNotFoundError
 from enchant.utils import get_default_language
 
 
-def test_basic():
+def test_basic() -> None:
     """Test a basic run of the SpellChecker class."""
     text = """This is sme text with a few speling erors in it. Its gret
     for checking wheather things are working proprly with the SpellChecker
@@ -91,7 +91,7 @@ def test_basic():
     assert chkr.get_text() == text2
 
 
-def test_filters():
+def test_filters() -> None:
     """Test SpellChecker with the 'filters' argument."""
     text = """I contain WikiWords that ShouldBe skipped by the filters"""
     chkr = SpellChecker("en_US", text=text, filters=[enchant.tokenize.WikiWordFilter])
@@ -101,7 +101,7 @@ def test_filters():
     assert chkr.get_text() == text
 
 
-def test_chunkers():
+def test_chunkers() -> None:
     """Test SpellChecker with the 'chunkers' argument."""
     text = """I contain <html a=xjvf>tags</html> that should be skipped"""
     chkr = SpellChecker("en_US", text=text, chunkers=[enchant.tokenize.HTMLChunker])
@@ -111,7 +111,7 @@ def test_chunkers():
     assert chkr.get_text() == text
 
 
-def test_chunkers_and_filters():
+def test_chunkers_and_filters() -> None:
     """Test SpellChecker with the 'chunkers' and 'filters' arguments."""
     text = """I contain <html a=xjvf>tags</html> that should be skipped
               along with a <a href='http://example.com/">link to
@@ -140,7 +140,7 @@ def test_chunkers_and_filters():
     assert chkr.get_text() == text
 
 
-def test_unicode():
+def test_unicode() -> None:
     """Test SpellChecker with a unicode string."""
     text = """I am a unicode strng with unicode erors."""
     chkr = SpellChecker("en_US", text)
@@ -164,7 +164,7 @@ def test_unicode():
     assert chkr.get_text() == "I am a unicode string with unicode errors."
 
 
-def test_chararray():
+def test_chararray() -> None:
     """Test SpellChecker with a character array as input."""
     atype = "u"
     text = "I wll be stord in an aray"
@@ -187,7 +187,7 @@ def test_chararray():
     assert txtarr.tounicode() == "I wll be stored in an array"
 
 
-def test_pwl():
+def test_pwl() -> None:
     """Test checker loop with PWL."""
     from enchant import DictWithPWL
 
@@ -203,7 +203,7 @@ def test_pwl():
     assert n == 1
 
 
-def test_bug2785373():
+def test_bug2785373() -> None:
     """Testcases for bug #2785373."""
     c = SpellChecker(enchant.Dict("en_US"), "")
     c.set_text("So, one dey when I wes 17, I left.")
@@ -215,7 +215,7 @@ def test_bug2785373():
         pass
 
 
-def test_default_language():
+def test_default_language() -> None:
     # Two cases: either SpellChecker() without argument works
     # and its lang is the default language, or
     # it does not and we get a DefaultLanguageNotFoundError
@@ -233,7 +233,7 @@ def test_default_language():
     assert checker.lang == get_default_language()
 
 
-def test_replace_with_shorter_string():
+def test_replace_with_shorter_string() -> None:
     """Testcase for replacing with a shorter string (bug #10)"""
     text = ". I Bezwaar tegen verguning."
     chkr = SpellChecker("en_US", text)
@@ -243,7 +243,7 @@ def test_replace_with_shorter_string():
     assert chkr.get_text() == ". I SPAM SPAM SPAM."
 
 
-def test_replace_with_empty_string():
+def test_replace_with_empty_string() -> None:
     """Testcase for replacing with an empty string (bug #10)"""
     text = ". I Bezwaar tegen verguning."
     chkr = SpellChecker("en_US", text)

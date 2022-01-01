@@ -3,6 +3,7 @@ These tests assume that there is at least one working provider
 with a dictionary for the "en_US" language.
 """
 import pickle
+from typing import Iterator
 
 import pytest
 
@@ -12,18 +13,18 @@ from enchant.utils import get_default_language
 
 
 @pytest.fixture
-def en_us_dict():
+def en_us_dict() -> Iterator[Dict]:
     res = Dict("en_US")
     yield res
     del res
 
 
-def test_has_en_us():
+def test_has_en_us() -> None:
     """Test that the en_US language is available through default broker."""
     assert dict_exists("en_US")
 
 
-def test_check(en_us_dict):
+def test_check(en_us_dict: Dict) -> None:
     """Test that check() works on some common words."""
     assert en_us_dict.check("hello")
     assert en_us_dict.check("test")
@@ -33,17 +34,17 @@ def test_check(en_us_dict):
         en_us_dict.check("")
 
 
-def test_broker(en_us_dict):
+def test_broker(en_us_dict: Dict) -> None:
     """Test that the dict's broker is set correctly."""
     assert en_us_dict._broker is enchant._broker
 
 
-def test_tag(en_us_dict):
+def test_tag(en_us_dict: Dict) -> None:
     """Test that the dict's tag is set correctly."""
     assert en_us_dict.tag == "en_US"
 
 
-def test_suggest(en_us_dict):
+def test_suggest(en_us_dict: Dict) -> None:
     """Test that suggest() gets simple suggestions right."""
     assert en_us_dict.check("hello")
     assert "hello" in en_us_dict.suggest("helo")
@@ -51,14 +52,14 @@ def test_suggest(en_us_dict):
         en_us_dict.suggest("")
 
 
-def test_suggest_hang_1(en_us_dict):
+def test_suggest_hang_1(en_us_dict: Dict) -> None:
     """Test whether suggest() hangs on some inputs (Bug #1404196)"""
     assert en_us_dict.suggest("Thiis")
     assert len(en_us_dict.suggest("Thiiis")) >= 0
     assert len(en_us_dict.suggest("Thiiiis")) >= 0
 
 
-def test_unicode1(en_us_dict):
+def test_unicode1(en_us_dict: Dict) -> None:
     """Test checking/suggesting for unicode strings"""
     # TODO: find something that actually returns suggestions
     us1 = r"he\u2149lo"
@@ -68,7 +69,7 @@ def test_unicode1(en_us_dict):
         assert type(s) is str
 
 
-def test_session(en_us_dict):
+def test_session(en_us_dict: Dict) -> None:
     """Test that adding words to the session works as required."""
     assert not en_us_dict.check("Lozz")
     assert not en_us_dict.is_added("Lozz")
@@ -89,7 +90,7 @@ def test_session(en_us_dict):
     en_us_dict.add_to_session("hello")
 
 
-def test_add_remove(en_us_dict):
+def test_add_remove(en_us_dict: Dict) -> None:
     """Test adding/removing from default user dictionary."""
     nonsense = "kxhjsddsi"
     assert not en_us_dict.check(nonsense)
@@ -109,7 +110,7 @@ def test_add_remove(en_us_dict):
     assert en_us_dict.check("pineapple")
 
 
-def test_default_lang(en_us_dict):
+def test_default_lang(en_us_dict: Dict) -> None:
     """Test behaviour of default language selection."""
     def_lang = get_default_language()
     if def_lang is None:
@@ -126,7 +127,7 @@ def test_default_lang(en_us_dict):
             pass
 
 
-def test_pickling(en_us_dict):
+def test_pickling(en_us_dict: Dict) -> None:
     """Test that pickling doesn't corrupt internal state."""
     d1 = Dict("en_US")
     assert d1.check("hello")

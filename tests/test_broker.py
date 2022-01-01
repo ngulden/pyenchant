@@ -1,23 +1,26 @@
+from typing import Dict as PythonDict
+from typing import Iterator, List
+
 import pytest
 
-from enchant import Broker
+from enchant import Broker, ProviderDesc
 
 
 @pytest.fixture
-def broker():
+def broker() -> Iterator[Broker]:
     res = Broker()
     yield res
     del res
 
 
-def test_all_langs_are_available(broker):
+def test_all_langs_are_available(broker: Broker) -> None:
     """Test whether all advertised languages are in fact available."""
     for lang in broker.list_languages():
         if not broker.dict_exists(lang):
             assert False, "language '" + lang + "' advertised but non-existent"
 
 
-def test_provs_are_available(broker):
+def test_provs_are_available(broker: Broker) -> None:
     """Test whether all advertised providers are in fact available."""
     for (lang, prov) in broker.list_dicts():
         assert broker.dict_exists(lang)
@@ -27,10 +30,10 @@ def test_provs_are_available(broker):
             assert False, "provier '" + str(prov) + "' advertised but non-existent"
 
 
-def test_prov_ordering(broker):
+def test_prov_ordering(broker: Broker) -> None:
     """Test that provider ordering works correctly."""
-    langs = {}
-    provs = []
+    langs: PythonDict[str, List[ProviderDesc]] = {}
+    provs: List[ProviderDesc] = []
     # Find the providers for each language, and a list of all providers
     for (tag, prov) in broker.list_dicts():
         # Skip hyphenation dictionaries installed by OOo
@@ -79,7 +82,7 @@ def test_prov_ordering(broker):
             del b2
 
 
-def test_get_set_param(broker):
+def test_get_set_param(broker: Broker) -> None:
     """
     Scenario:
       Either broker.set_param(key, value) works

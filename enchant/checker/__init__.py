@@ -47,7 +47,7 @@ such as a wxPython GUI dialog and a command-line interface.
 
 import array
 import warnings
-from typing import List, Optional, Type, Union
+from typing import List, MutableSequence, Optional, Type, Union
 
 import enchant
 from enchant import Dict
@@ -115,10 +115,10 @@ class SpellChecker:
     def __init__(
         self,
         lang: Union[Dict, str] = None,
-        text: Optional[str] = None,
+        text: Optional[Union[str, MutableSequence[str]]] = None,
         tokenize: Union[Type[tokenize], Filter] = None,
-        chunkers: List[Chunker] = None,
-        filters: List[Filter] = None,
+        chunkers: List[Type[Chunker]] = None,
+        filters: List[Type[Filter]] = None,
     ) -> None:
         """Constructor for the SpellChecker class.
 

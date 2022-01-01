@@ -231,7 +231,7 @@ broker_describe1.argtypes = [t_broker, t_broker_desc_func, c_void_p]
 broker_describe1.restype = None
 
 
-def broker_describe(broker: _B, cbfunc) -> None:
+def broker_describe(broker: _B, cbfunc: Callable[[bytes, bytes, bytes], None]) -> None:
     def cbfunc1(*args):
         cbfunc(*args[:-1])
 
@@ -243,74 +243,91 @@ broker_list_dicts1.argtypes = [t_broker, t_dict_desc_func, c_void_p]
 broker_list_dicts1.restype = None
 
 
-def broker_list_dicts(broker: _B, cbfunc) -> None:
+def broker_list_dicts(
+    broker: _B, cbfunc: Callable[[bytes, bytes, bytes, bytes], None]
+) -> None:
     def cbfunc1(*args):
         cbfunc(*args[:-1])
 
     broker_list_dicts1(broker, t_dict_desc_func(cbfunc1), None)
 
 
+# TODO:
+#   We use this pattern for every C function in the `e` object
+#
+#   try:
+#      <name> = e.enchant_<name>
+#   except AttributeError:
+#      def <name>():
+#          return e.enchant_<name>
+#
+#  so that there's a better error message if the `enchant_<name>` symbol
+#  is not found in the `e` object.
+#
+#  This is a bit tedious to write, and confuses mypy (we need allow_redefinition=True)
+#
+#  Maybe there's a better way to do this?
+
+
 try:
-    broker_get_param = e.enchant_broker_get_param  # type: Callable[[_B, bytes], bytes]
+    broker_get_param = e.enchant_broker_get_param
 except AttributeError:
     #  Make the lookup error occur at runtime
-    def broker_get_param(broker: _B, name: bytes) -> bytes:
+    def broker_get_param(broker: _B, name: bytes) -> bytes:  # type: ignore
         return e.enchant_broker_get_param(broker, name)
 
 
 else:
-    broker_get_param.argtypes = [t_broker, c_char_p]  # type: ignore
-    broker_get_param.restype = c_char_p  # type: ignore
+    broker_get_param.argtypes = [t_broker, c_char_p]
+    broker_get_param.restype = c_char_p
 
 try:
-    broker_set_param = (
-        e.enchant_broker_set_param
-    )  # type: Callable[[_B, bytes, bytes], None]
+    broker_set_param = e.enchant_broker_set_param
 except AttributeError:
     #  Make the lookup error occur at runtime
-    def broker_set_param(broker: _B, name: bytes, value: bytes) -> None:
+    def broker_set_param(broker: _B, name: bytes, value: bytes) -> None:  # type: ignore
         return e.enchant_broker_set_param(broker, name, value)
 
 
 else:
-    broker_set_param.argtypes = [t_broker, c_char_p, c_char_p]  # type: ignore
-    broker_set_param.restype = None  # type: ignore
+    broker_set_param.argtypes = [t_broker, c_char_p, c_char_p]
+    broker_set_param.restype = None
 
 try:
-    get_version = e.enchant_get_version  # type: Callable[[], bytes]
+    get_version = e.enchant_get_version
 except AttributeError:
     #  Make the lookup error occur at runtime
-    def get_version() -> bytes:
+    def get_version() -> bytes:  # type: ignore
         return e.enchant_get_version()
 
 
 else:
-    get_version.argtypes = []  # type: ignore
-    get_version.restype = c_char_p  # type: ignore
+    get_version.argtypes = []
+    get_version.restype = c_char_p
 
 try:
-    set_prefix_dir = e.enchant_set_prefix_dir  # type: Callable[[bytes], None]
+    set_prefix_dir = e.enchant_set_prefix_dir
 except AttributeError:
     #  Make the lookup error occur at runtime
-    def set_prefix_dir(path: bytes):
+    def set_prefix_dir(path: bytes):  # type: ignore
         return e.enchant_set_prefix_dir(path)
 
 
 else:
-    set_prefix_dir.argtypes = [c_char_p]  # type: ignore
-    set_prefix_dir.restype = None  # type: ignore
+    set_prefix_dir.argtypes = [c_char_p]
+    set_prefix_dir.restype = None
 
 try:
-    get_user_config_dir = e.enchant_get_user_config_dir  # type: Callable[[], bytes]
+    get_user_config_dir = e.enchant_get_user_config_dir
 except AttributeError:
     #  Make the lookup error occur at runtime
-    def get_user_config_dir() -> bytes:
+    def get_user_config_dir() -> bytes:  # type: ignore
         return e.enchant_get_user_config_dir()
 
 
 else:
-    get_user_config_dir.argtypes = []  # type: ignore
-    get_user_config_dir.restype = c_char_p  # type: ignore
+    get_user_config_dir.argtypes = []
+    get_user_config_dir.restype = c_char_p
 
 dict_check1 = e.enchant_dict_check
 dict_check1.argtypes = [t_dict, c_char_p, c_size_t]
@@ -424,7 +441,9 @@ dict_describe1.argtypes = [t_dict, t_dict_desc_func, c_void_p]
 dict_describe1.restype = None
 
 
-def dict_describe(dict: _D, cbfunc) -> None:
+def dict_describe(
+    dict: _D, cbfunc: Callable[[bytes, bytes, bytes, bytes], None]
+) -> None:
     def cbfunc1(tag, name, desc, file, data):
         cbfunc(tag, name, desc, file)
 
